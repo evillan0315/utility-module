@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "/schemas/user.schema.json",
+  "title": "User",
+  "description": "Schema for a user object in the system.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "description": "Unique identifier for the user",
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "description": "Full name of the user",
+      "type": "string"
+    },
+    "email": {
+      "description": "Email address of the user",
+      "type": "string",
+      "format": "email"
+    },
+    "createdAt": {
+      "description": "The time at which the user was created",
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "description": "The last time the user was updated",
+      "type": "string",
+      "format": "date-time"
+    },
+    "deletedAt": {
+      "description": "The time at which the user was deleted",
+      "type": "string",
+      "format": "date-time"
+    },
+    "isActive": {
+      "description": "Whether the user account is active",
+      "type": "boolean"
+    },
+    "roles": {
+      "description": "Roles assigned to the user",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["id", "name", "email", "createdAt", "isActive"]
+}
+

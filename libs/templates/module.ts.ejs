@@ -1,0 +1,21 @@
+import { Module } from '@nestjs/common';
+import { <%= className %>Service } from './<%= folderName %>.service';
+import { <%= className %>Controller } from './<%= folderName %>.controller';
+import { ViewsController } from './views/views.controller';
+import { PrismaModule } from '../prisma/prisma.module';
+
+@Module({
+  imports: [PrismaModule],
+  controllers: [<%= className %>Controller, ViewsController],
+  providers: [
+      <%= className %>Service,
+      <% if (className === 'File') { %>
+      {
+        provide: 'EXCLUDED_FOLDERS',
+        useValue: ['node_modules', 'dist', '.git'],
+      },
+      <% } %>
+    ]
+})
+export class <%= className %>Module {}
+

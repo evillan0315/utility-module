@@ -1,0 +1,276 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Delete,
+  UseGuards,
+  HttpStatus,
+  Query,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiCreatedResponse,
+  ApiNotFoundResponse,
+  ApiBadRequestResponse,
+  ApiUnauthorizedResponse,
+  ApiForbiddenResponse,
+  ApiQuery,
+  ApiResponse,
+  ApiConsumes,
+  ApiBody
+} from '@nestjs/swagger';
+import axios from 'axios';
+<% if (isProtected) { %>
+import { JwtAuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '../auth/enums/user-role.enum';
+<% } %>
+import { <%= className %>Service } from './<%= folderName %>.service';
+import {
+  Create<%= className %>Dto,
+  Pagination<%= className %>ResultDto,
+  Pagination<%= className %>QueryDto,
+} from './dto/create-<%= folderName %>.dto';
+import { Update<%= className %>Dto } from './dto/update-<%= folderName %>.dto';
+<% if (className === 'File') { %>
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { diskStorage } from 'multer';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ReadFileDto } from './dto/read-file.dto';
+import { ReadFileResponseDto } from './dto/read-file-response.dto';
+<% } %>
+
+<% if (isProtected) { %>
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+<% } %>
+@ApiTags('<%= className %>')
+@Controller('api/<%= folderName %>')
+export class <%= className %>Controller {
+  constructor(private readonly <%= fileName %>Service: <%= className %>Service) {}
+  <% if (className === 'File') { %>
+  @Get('list')
+  <% if (isProtected) { %>
+  @Roles(UserRole.ADMIN)
+  <% } %>
+  @ApiOperation({ summary: 'List files in a directory' })
+  @ApiQuery({
+    name: 'directory',
+    required: false,
+    description: 'Path to the directory',
+  })
+  @ApiQuery({
+    name: 'recursive',
+    required: false,
+    type: Boolean,
+    description: 'List files recursively',
+  })
+  @ApiResponse({ status: 200, description: 'List of files and directories' })
+  async getFiles(
+    @Query('directory') directory?: string,
+    @Query('recursive') recursive: boolean = false,
+  ) {
+    return this.fileService.getFilesByDirectory(directory, recursive);
+  }
+  <% if (isProtected) { %>
+  @Roles(UserRole.ADMIN)
+  <% } %>
+  @Post('read')
+  @ApiOperation({
+    summary: 'Read file content from upload, local path, or URL',
+  })
+  @ApiResponse({ status: 200, type: ReadFileResponseDto })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'Upload a file (optional if using filePath or url)',
+        },
+        filePath: {
+          type: 'string',
+          description: 'Path to a file on the local file system',
+        },
+        url: {
+          type: 'string',
+          description: 'URL of a remote file to fetch content from',
+        },
+        generateBlobUrl: {
+          type: 'boolean',
+          description: 'Return as base64 blob-style data URL',
+        },
+      },
+      required: [],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'File content returned successfully.',
+  })
+  @UseInterceptors(FileInterceptor('file'))
+  async readFileContent(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: ReadFileDto,
+  ): Promise<ReadFileResponseDto> {
+    let buffer: Buffer;
+    let filename = 'file';
+    let filePath = '';
+    if (file?.buffer) {
+      buffer = file.buffer;
+      filename = file.originalname || filename;
+    } else if (body.filePath) {
+      try {
+        buffer = await fs.readFile(body.filePath);
+        filePath = body.filePath;
+        filename = body.filePath.split('/').pop() || filename;
+      } catch {
+        throw new BadRequestException(
+          `Unable to read file from path: ${body.filePath}`,
+        );
+      }
+    } else if (body.url) {
+      try {
+        const res = await axios.get(body.url, { responseType: 'arraybuffer' });
+        buffer = Buffer.from(res.data);
+        filePath = body.url;
+        filename = body.url.split('/').pop() || filename;
+      } catch {
+        throw new BadRequestException(
+          `Unable to fetch file from URL: ${body.url}`,
+        );
+      }
+    } else {
+      throw new BadRequestException('Please provide a file, filePath, or url.');
+    }
+
+    return this.fileService.readFile(
+      buffer,
+      filename,
+      body.generateBlobUrl,
+      filePath,
+    );
+  }
+  <% } %>
+  
+  
+  // ───────────────────────────────────────────────────────────
+  // CREATE
+  // ───────────────────────────────────────────────────────────
+
+  @Post()
+  <% if (isProtected) { %>
+  @Roles(UserRole.ADMIN)
+  <% } %>
+  @ApiOperation({ summary: 'Create a new <%= className %>' })
+  @ApiCreatedResponse({ description: 'Successfully created.', type: Create<%= className %>Dto })
+  @ApiBadRequestResponse({ description: 'Validation failed.' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized.' })
+  @ApiForbiddenResponse({ description: 'Forbidden.' })
+  create(@Body() dto: Create<%= className %>Dto) {
+    return this.<%= fileName %>Service.create(dto);
+  }
+
+  // ───────────────────────────────────────────────────────────
+  // FIND ALL
+  // ───────────────────────────────────────────────────────────
+
+  @Get()
+  <% if (hasCreatedBy || isProtected) { %>
+  @Roles(UserRole.ADMIN)
+  <% } %>
+  @ApiOperation({ summary: 'Retrieve all <%= className %> records' })
+  @ApiOkResponse({ description: 'List of <%= className %> records.', type: [Create<%= className %>Dto] })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized.' })
+  @ApiForbiddenResponse({ description: 'Forbidden.' })
+  findAll() {
+    return this.<%= fileName %>Service.findAll();
+  }
+
+  // ───────────────────────────────────────────────────────────
+  // PAGINATED
+  // ───────────────────────────────────────────────────────────
+
+  @Get('paginated')
+  <% if (isProtected) { %>
+  @Roles(UserRole.ADMIN)
+  <% } %>
+  @ApiOperation({ summary: 'Paginated <%= className %> records' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'pageSize', required: false, type: Number, example: 10 })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Paginated results',
+    type: Pagination<%= className %>ResultDto,
+  })
+  findAllPaginated(@Query() query: Pagination<%= className %>QueryDto) {
+    const { page, pageSize } = query;
+    return this.<%= fileName %>Service.findAllPaginated(undefined, page, pageSize);
+  }
+
+  // ───────────────────────────────────────────────────────────
+  // FIND ONE
+  // ───────────────────────────────────────────────────────────
+
+  @Get(':id')
+  <% if (isProtected) { %>
+  @Roles(UserRole.ADMIN)
+  <% } %>
+  @ApiOperation({ summary: 'Find <%= className %> by ID' })
+  @ApiOkResponse({ description: 'Record found.', type: Create<%= className %>Dto })
+  @ApiNotFoundResponse({ description: 'Record not found.' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized.' })
+  @ApiForbiddenResponse({ description: 'Forbidden.' })
+  findOne(@Param('id') id: string) {
+    return this.<%= fileName %>Service.findOne(id);
+  }
+
+  // ───────────────────────────────────────────────────────────
+  // UPDATE
+  // ───────────────────────────────────────────────────────────
+
+  @Patch(':id')
+  <% if (isProtected) { %>
+  @Roles(UserRole.ADMIN)
+  <% } %>
+  @ApiOperation({ summary: 'Update <%= className %> by ID' })
+  @ApiOkResponse({ description: 'Successfully updated.', type: Update<%= className %>Dto })
+  @ApiBadRequestResponse({ description: 'Invalid data.' })
+  @ApiNotFoundResponse({ description: 'Record not found.' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized.' })
+  @ApiForbiddenResponse({ description: 'Forbidden.' })
+  update(@Param('id') id: string, @Body() dto: Update<%= className %>Dto) {
+    return this.<%= fileName %>Service.update(id, dto);
+  }
+
+  // ───────────────────────────────────────────────────────────
+  // DELETE
+  // ───────────────────────────────────────────────────────────
+
+  @Delete(':id')
+  <% if (isProtected) { %>
+  @Roles(UserRole.ADMIN)
+  <% } %>
+  @ApiOperation({ summary: 'Delete <%= className %> by ID' })
+  @ApiOkResponse({ description: 'Successfully deleted.' })
+  @ApiNotFoundResponse({ description: 'Record not found.' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized.' })
+  @ApiForbiddenResponse({ description: 'Forbidden.' })
+  remove(@Param('id') id: string) {
+    return this.<%= fileName %>Service.remove(id);
+  }
+}
+

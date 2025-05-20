@@ -1,0 +1,61 @@
+import {
+  IsString,
+  IsOptional,
+  IsEmail,
+  IsArray,
+  IsBoolean,
+  IsNumber,
+  IsInt,
+  IsDate,
+  IsObject,
+  IsPositive,
+} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+
+export class Create<%= className %>Dto {
+<% fields
+  .filter(field =>
+    field.relationType !== 'one-to-many' &&
+    !['id', 'createdAt', 'updatedAt', 'createdById', 'deletedAt'].includes(field.name)
+  )
+  .forEach(field => { -%>
+  @ApiProperty({ description: '<%= field.name %> field' })
+  <% field.validators.forEach(validator => { -%>
+  <%= validator %>
+  <% }) -%>
+  <%= field.name %>: <%= field.type %>;
+<% }) %>
+}
+
+export class Pagination<%= className %>ResultDto {
+  @ApiProperty({ type: [Create<%= className %>Dto] })
+  items: Create<%= className %>Dto[];
+
+  @ApiProperty()
+  total: number;
+
+  @ApiProperty()
+  page: number;
+
+  @ApiProperty()
+  pageSize: number;
+
+  @ApiProperty()
+  totalPages: number;
+}
+
+export class Pagination<%= className %>QueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsPositive()
+  @ApiPropertyOptional({ default: 1 })
+  page?: number = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsPositive()
+  @ApiPropertyOptional({ default: 10 })
+  pageSize?: number = 10;
+}
+

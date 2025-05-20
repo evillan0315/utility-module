@@ -1,0 +1,118 @@
+import {
+  Controller,
+  Get,
+  Req,
+  Res,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Delete,
+  UseGuards,
+  HttpStatus,
+  Query,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  Render
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiCreatedResponse,
+  ApiNotFoundResponse,
+  ApiBadRequestResponse,
+  ApiUnauthorizedResponse,
+  ApiForbiddenResponse,
+  ApiQuery,
+  ApiResponse,
+  ApiConsumes,
+  ApiBody
+} from '@nestjs/swagger';
+import axios from 'axios';
+import { Response } from 'express';
+<% if (isProtected) { %>
+import { JwtAuthGuard } from '../../auth/auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
+import { Roles } from '../../auth/decorators/roles.decorator';
+import { UserRole } from '../../auth/enums/user-role.enum';
+<% } %>
+import { <%= className %>Service } from '../<%= folderName %>.service';
+import {
+  Create<%= className %>Dto,
+} from '../dto/create-<%= folderName %>.dto';
+import { Update<%= className %>Dto } from '../dto/update-<%= folderName %>.dto';
+
+
+<% if (isProtected) { %>
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+<% } %>
+@ApiTags('Views')
+@Controller('<%= folderName %>')
+export class ViewsController {
+  constructor(private readonly <%= fileName %>Service: <%= className %>Service) {}
+  
+  @Get()
+  <% if (isProtected) { %>
+  @Roles(UserRole.ADMIN)
+  <% } %>
+  @Render('pages/lists')
+  @ApiOperation({ summary: 'Render <%= fileName %> lists view' })
+  @ApiResponse({ status: 200, description: 'List <%= fileName %> view rendered' })
+  async getLists(@Req() req: Request) {
+    const lists = await this.<%= fileName %>Service.findAll();
+     const visibleFields = (<%- JSON.stringify(fields, null, 2) %>).filter(
+    field => !['id', 'createdAt', 'updatedAt', 'createdById', 'deletedAt'].includes(field.name)
+  );
+    return {
+      title: 'Lists <%= className %>',
+      model: '<%= fileName %>',
+      fields: visibleFields,
+      lists: lists,
+      isAuthenticated: Boolean(<%= isProtected %>)
+    }
+  }
+  
+  @Get('create')
+  <% if (isProtected) { %>
+  @Roles(UserRole.ADMIN)
+  <% } %>
+  @Render('pages/create')
+  @ApiOperation({ summary: 'Render <%= fileName %> creation form' })
+  @ApiResponse({ status: 200, description: 'Create <%= fileName %> form rendered' })
+  getCreateForm(@Req() req: Request) {
+    const visibleFields = (<%- JSON.stringify(fields, null, 2) %>).filter(
+      field => !['id', 'createdAt', 'updatedAt', 'createdById', 'deletedAt'].includes(field.name)
+    );
+    return {
+      title: 'Create <%= className %>',
+      action: 'Create',
+      model: '<%= fileName %>',
+      fields: visibleFields,
+      isAuthenticated: Boolean(<%= isProtected %>)
+    };
+  }
+  
+  @Post('create')
+  <% if (isProtected) { %>
+  @Roles(UserRole.ADMIN)
+  <% } %>
+@ApiOperation({ summary: 'Handle <%= fileName %> creation form submission' })
+@ApiCreatedResponse({ description: '<%= className %> created successfully' })
+@ApiBadRequestResponse({ description: 'Invalid input data' })
+async create(
+  @Body() createDto: Create<%= className %>Dto,
+  @Res() res: Response
+) {
+  try {
+    await this.<%= fileName %>Service.create(createDto);
+    return res.redirect('/<%= folderName %>');
+  } catch (error) {
+    throw new BadRequestException(error.message);
+  }
+}
+}
+
