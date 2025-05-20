@@ -429,7 +429,6 @@ export class UtilsService {
     }
   }
 
-  
   /**
    * Convert Markdown to MDAST JSON AST
    */
@@ -451,14 +450,14 @@ export class UtilsService {
   /**
    * Convert Markdown to HTML
    */
-   
-  async markdownToHtml(markdown: string): Promise<string> {
-  const file = await unified()
-    .use(remarkParse)
-    .use(remarkRehype)
-    .use(rehypeStringify)
-    .process(markdown);
 
-  return `${style}<div class="markdown-body">${String(file)}</div>`;
-}
+  async markdownToHtml(markdown: string): Promise<string> {
+    const file = await unified()
+      .use(remarkParse)
+      .use(remarkRehype)
+      .use(rehypeStringify)
+      .process(markdown);
+
+    return `${style}<div class="markdown-body">${String(file)}</div>`;
+  }
 }

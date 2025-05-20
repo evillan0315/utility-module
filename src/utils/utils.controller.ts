@@ -226,7 +226,7 @@ export class UtilsController {
     const title = match ? match[1].trim() : null;
     return title;
   }
-  
+
   // Utili for handling SQL
   @Post('parse-select')
   @ApiOperation({
@@ -304,26 +304,31 @@ export class UtilsController {
   }
   @Post('to-json')
   @ApiOperation({ summary: 'Convert Markdown to JSON AST' })
-  @ApiBody({ schema: { example: { markdown: '# Hello\n\nThis is **bold**.' } } })
+  @ApiBody({
+    schema: { example: { markdown: '# Hello\n\nThis is **bold**.' } },
+  })
   @ApiResponse({ status: 201, description: 'MDAST JSON returned.' })
-
   async convertToJson(@Body('markdown') markdown: string): Promise<Root> {
-  return this.utilsService.markdownToJson(markdown);
-}
+    return this.utilsService.markdownToJson(markdown);
+  }
   @Post('to-markdown')
   @ApiOperation({ summary: 'Convert JSON AST to Markdown' })
-  @ApiBody({ schema: { example: {
-    ast: {
-      type: 'root',
-      children: [
-        {
-          type: 'heading',
-          depth: 1,
-          children: [{ type: 'text', value: 'Hello' }],
+  @ApiBody({
+    schema: {
+      example: {
+        ast: {
+          type: 'root',
+          children: [
+            {
+              type: 'heading',
+              depth: 1,
+              children: [{ type: 'text', value: 'Hello' }],
+            },
+          ],
         },
-      ],
+      },
     },
-  }}})
+  })
   @ApiResponse({ status: 201, description: 'Markdown string returned.' })
   async convertToMarkdown(@Body('ast') ast: Root): Promise<string> {
     return this.utilsService.jsonToMarkdown(ast);
